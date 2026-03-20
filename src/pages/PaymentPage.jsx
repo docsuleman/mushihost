@@ -1,0 +1,167 @@
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Elements } from '@stripe/react-stripe-js'
+import { getStripe } from '@/lib/stripe'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import BrandHeader from '@/components/BrandHeader'
+import PaymentForm from '@/components/PaymentForm'
+import { validatePaymentLink, createPaymentIntent } from '@/helpers/api'
+import { formatCurrency } from '@/lib/utils'
+import { ShoppingCart, AlertCircle } from 'lucide-react'
+
+export default function PaymentPage() {
+  const { token } = useParams()
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [linkData, setLinkData] = useState(null)
+  const [clientSecret, setClientSecret] = useState(null)
+
+  useEffect(() => {
+    async function init() {
+      try {
+        // Validate payment link
+        const data = await validatePaymentLink(token)
+        if (data.status === 'expired') {
+          setError('This payment link has expired. Please request a new one.')
+          setLoading(false)
+          return
+        }
+        if (data.status === 'completed') {
+          navigate('/pay/success', { state: { already: true } })
+          return
+        }
+        setLinkData(data)
+
+        // Create payment intent
+        const intent = await createPaymentIntent({ token, provider: 'stripe' })
+        setClientSecret(intent.client_secret)
+      } catch (err) {
+        setError(err.message || 'Failed to load payment details.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    init()
+  }, [token, navigate])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <BrandHeader />
+        <div className="mx-auto max-w-lg px-4 py-12">
+          <Card>
+            <CardContent className="space-y-4 p-6">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <BrandHeader />
+        <div className="mx-auto max-w-lg px-4 py-12">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    )
+  }
+
+  const { product, amount_usd, source_site, customer } = linkData
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <BrandHeader sourceSite={source_site} />
+      <div className="mx-auto max-w-lg px-4 py-12">
+        {/* Order Summary */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-primary" />
+              <CardTitle>Order Summary</CardTitle>
+            </div>
+            <CardDescription>Review your purchase details</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{product.name}</p>
+                <p className="text-sm text-muted-foreground">{product.description}</p>
+                {product.type === 'subscription' && (
+                  <Badge variant="secondary" className="mt-1">
+                    {product.interval === 'month' ? 'Monthly' :
+                     product.interval === '6_months' ? 'Every 6 months' : 'Yearly'} subscription
+                  </Badge>
+                )}
+              </div>
+              <span className="text-2xl font-bold">{formatCurrency(amount_usd)}</span>
+            </div>
+            {customer?.email && (
+              <>
+                <Separator className="my-4" />
+                <p className="text-sm text-muted-foreground">
+                  Paying as <span className="font-medium text-foreground">{customer.email}</span>
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Stripe Payment Form */}
+        {clientSecret && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Details</CardTitle>
+              <CardDescription>Enter your payment information</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Elements
+                stripe={getStripe()}
+                options={{
+                  clientSecret,
+                  appearance: {
+                    theme: 'stripe',
+                    variables: {
+                      colorPrimary: '#6d28d9',
+                      borderRadius: '8px',
+                    },
+                  },
+                }}
+              >
+                <PaymentForm
+                  amount={amount_usd}
+                  productName={product.name}
+                  onSuccess={(paymentIntent) => {
+                    navigate('/pay/success', {
+                      state: {
+                        paymentId: paymentIntent.id,
+                        product: product.name,
+                        amount: amount_usd,
+                        site: source_site,
+                      },
+                    })
+                  }}
+                  onError={() => {}}
+                />
+              </Elements>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  )
+}
