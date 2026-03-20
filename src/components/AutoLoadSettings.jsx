@@ -46,7 +46,7 @@ export default function AutoLoadSettings({ settings, onSave }) {
               Auto-Load Credits
             </CardTitle>
             <CardDescription>
-              Automatically top up your MyQBank credits when they run low
+              Automatically top up your credits when they run low
             </CardDescription>
           </div>
           <button

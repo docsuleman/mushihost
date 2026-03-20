@@ -1,13 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Server } from 'lucide-react'
 
-const SITE_LABELS = {
-  myqbank: 'MyQBank',
-  freemedtube: 'FreemedTube',
-  mymedbooks: 'MyMedBooks',
-}
-
-export default function BrandHeader({ sourceSite }) {
+export default function BrandHeader() {
   return (
     <header className="border-b border-border bg-white">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
@@ -15,11 +9,9 @@ export default function BrandHeader({ sourceSite }) {
           <Server className="h-6 w-6 text-primary" />
           MushiHost
         </Link>
-        {sourceSite && (
-          <span className="text-sm text-muted-foreground">
-            Payment for {SITE_LABELS[sourceSite] || sourceSite}
-          </span>
-        )}
+        <span className="text-sm text-muted-foreground">
+          Secure Payment
+        </span>
       </div>
     </header>
   )

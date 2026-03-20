@@ -45,7 +45,7 @@ export default function AutoLoad() {
   }
 
   return (
-    <DashboardLayout title="Auto-Load Credits" description="Automatically top up your MyQBank credits">
+    <DashboardLayout title="Auto-Load Credits" description="Automatically top up your credits when they run low">
       <div className="space-y-6">
         <AutoLoadSettings settings={customer} onSave={handleSave} />
 
