@@ -4,6 +4,7 @@ import { resolveSupabaseUrl } from '../_shared/supabase.ts';
 import { corsHeaders, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { fulfillPayment } from '../_shared/fulfill.ts';
 import { generateInvoice } from '../_shared/invoice.ts';
+import { getStripe as getSharedStripe, ensureAutoRenewCoupon, getOrCreateRecurringPrice } from '../_shared/stripe.ts';
 
 const SUPABASE_URL = resolveSupabaseUrl();
 const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '';
@@ -202,8 +203,71 @@ async function handlePaymentIntentSucceeded(
     await generateInvoice(payment.id, customerId, paymentIntent.amount / 100, product);
   }
 
-  // If subscription product, create subscription record
-  if (product.type === 'subscription') {
+  // Load the payment link to check auto_renew flag
+  const { data: link } = await supabaseAdmin
+    .from('mushi_payment_links')
+    .select('auto_renew')
+    .eq('id', linkId)
+    .single();
+
+  const autoRenew = link?.auto_renew === true;
+
+  if (autoRenew) {
+    // Auto-renew ON: Create a Stripe Subscription with 15% coupon for next period
+    try {
+      const couponId = await ensureAutoRenewCoupon();
+      const stripePriceId = await getOrCreateRecurringPrice(product, supabaseAdmin);
+
+      const periodEnd = calculatePeriodEnd(product.interval, product.interval_count);
+      const billingAnchor = Math.floor(periodEnd.getTime() / 1000);
+
+      // Attach payment method to customer if not already default
+      const stripeInstance = getSharedStripe();
+      if (paymentIntent.payment_method) {
+        await stripeInstance.paymentMethods.attach(paymentIntent.payment_method as string, {
+          customer: customer.stripe_customer_id,
+        });
+        await stripeInstance.customers.update(customer.stripe_customer_id, {
+          invoice_settings: {
+            default_payment_method: paymentIntent.payment_method as string,
+          },
+        });
+      }
+
+      const subscription = await stripeInstance.subscriptions.create({
+        customer: customer.stripe_customer_id,
+        items: [{ price: stripePriceId }],
+        coupon: couponId,
+        billing_cycle_anchor: billingAnchor,
+        proration_behavior: 'none',
+        metadata: {
+          mushi_customer_id: customerId,
+          mushi_product_id: productId,
+          source_site: metadata.source_site,
+          auto_renew: 'true',
+        },
+      });
+
+      await supabaseAdmin.from('mushi_subscriptions').insert({
+        customer_id: customerId,
+        product_id: productId,
+        payment_method_id: paymentMethodId,
+        stripe_subscription_id: subscription.id,
+        status: 'active',
+        auto_renew: true,
+        discount_percent: 15,
+        current_period_start: new Date().toISOString(),
+        current_period_end: periodEnd.toISOString(),
+        granted: product.grants,
+      });
+
+      console.log(`Created auto-renew subscription ${subscription.id} for ${customer.email}`);
+    } catch (subErr) {
+      console.error('Failed to create auto-renew subscription:', subErr);
+      // Payment still succeeded — subscription creation failure is non-fatal
+    }
+  } else if (product.type === 'subscription') {
+    // Non-auto-renew subscription product: create a simple record (no Stripe sub)
     const periodEnd = calculatePeriodEnd(product.interval, product.interval_count);
     await supabaseAdmin.from('mushi_subscriptions').insert({
       customer_id: customerId,
@@ -259,12 +323,43 @@ async function handleInvoicePaid(
 
   if (!sub) return;
 
-  // Re-fulfill on renewal
-  await fulfillPayment(sub.product, sub.customer, {
+  // Calculate amounts
+  const amountPaid = (invoice.amount_paid || 0) / 100;
+  const discountPercent = sub.discount_percent || 0;
+  const originalAmount = sub.product.price_usd;
+
+  // Record the renewal payment
+  await supabaseAdmin.from('mushi_payments').insert({
+    customer_id: sub.customer.id,
+    product_id: sub.product.id,
+    amount_usd: amountPaid,
+    original_amount_usd: originalAmount,
+    discount_percent: discountPercent,
+    currency: invoice.currency || 'usd',
+    provider: 'stripe',
+    provider_payment_id: invoice.payment_intent as string || invoice.id,
+    status: 'succeeded',
+    description: `${sub.product.name} (Auto-Renewal${discountPercent ? ` - ${discountPercent}% off` : ''})`,
+  });
+
+  // Update subscription period
+  if (invoice.lines?.data?.[0]) {
+    const line = invoice.lines.data[0];
+    await supabaseAdmin
+      .from('mushi_subscriptions')
+      .update({
+        current_period_start: new Date((line.period?.start || 0) * 1000).toISOString(),
+        current_period_end: new Date((line.period?.end || 0) * 1000).toISOString(),
+      })
+      .eq('id', sub.id);
+  }
+
+  // Re-fulfill on renewal (add credits / activate membership / activate tier)
+  const fulfillResult = await fulfillPayment(sub.product, sub.customer, {
     current_period_end: sub.current_period_end,
   });
 
-  console.log(`Subscription renewal fulfilled for ${sub.customer.email}`);
+  console.log(`Subscription renewal fulfilled for ${sub.customer.email} (discount: ${discountPercent}%, paid: $${amountPaid})`);
 }
 
 async function handleInvoicePaymentFailed(

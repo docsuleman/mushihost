@@ -25,7 +25,7 @@ const handler = async (request: Request): Promise<Response> => {
     );
 
     const body = await request.json();
-    const { product_id, source_site, source_user_id, source_user_email, context } = body;
+    const { product_id, source_site, source_user_id, source_user_email, context, auto_renew } = body;
 
     // Validate required fields
     if (!product_id || !source_site || !source_user_email) {
@@ -122,6 +122,7 @@ const handler = async (request: Request): Promise<Response> => {
         source_site,
         source_user_id: source_user_id?.toString(),
         amount_usd: product.price_usd,
+        auto_renew: !!auto_renew,
         context: context || {},
         expires_at: expiresAt,
       })
@@ -139,6 +140,7 @@ const handler = async (request: Request): Promise<Response> => {
       expires_at: link.expires_at,
       amount_usd: product.price_usd,
       product_name: product.name,
+      auto_renew: !!auto_renew,
     });
   } catch (err) {
     console.error('Error in mushi-create-payment-link:', err);

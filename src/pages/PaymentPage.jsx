@@ -11,7 +11,7 @@ import BrandHeader from '@/components/BrandHeader'
 import PaymentForm from '@/components/PaymentForm'
 import { validatePaymentLink, createPaymentIntent } from '@/helpers/api'
 import { formatCurrency } from '@/lib/utils'
-import { ShoppingCart, AlertCircle } from 'lucide-react'
+import { ShoppingCart, AlertCircle, RefreshCw } from 'lucide-react'
 
 export default function PaymentPage() {
   const { token } = useParams()
@@ -81,7 +81,7 @@ export default function PaymentPage() {
     )
   }
 
-  const { product, amount_usd, source_site, customer } = linkData
+  const { product, amount_usd, source_site, customer, auto_renew } = linkData
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -110,6 +110,20 @@ export default function PaymentPage() {
               </div>
               <span className="text-2xl font-bold">{formatCurrency(amount_usd)}</span>
             </div>
+            {auto_renew && (
+              <>
+                <Separator className="my-4" />
+                <div className="flex items-start gap-2 rounded-lg bg-emerald-50 p-3 border border-emerald-200">
+                  <RefreshCw className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-emerald-800">Auto-renewal enabled</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">
+                      Future renewals will be automatically charged at 15% off ({formatCurrency(amount_usd * 0.85)}/renewal)
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
             {customer?.email && (
               <>
                 <Separator className="my-4" />
@@ -152,6 +166,7 @@ export default function PaymentPage() {
                         product: product.name,
                         amount: amount_usd,
                         site: source_site,
+                        autoRenew: auto_renew,
                       },
                     })
                   }}

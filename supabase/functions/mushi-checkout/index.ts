@@ -58,6 +58,7 @@ const handler = async (request: Request): Promise<Response> => {
         product: link.product,
         amount_usd: link.amount_usd,
         source_site: link.source_site,
+        auto_renew: !!link.auto_renew,
         customer: {
           email: link.customer?.email,
           first_name: link.customer?.first_name,

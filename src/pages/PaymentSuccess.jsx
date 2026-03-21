@@ -2,7 +2,7 @@ import { useLocation, Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import BrandHeader from '@/components/BrandHeader'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, RefreshCw } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 
 const SITE_URLS = {
@@ -37,6 +37,17 @@ export default function PaymentSuccess() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   A confirmation email will be sent to your registered email address.
                 </p>
+                {state?.autoRenew && (
+                  <div className="mt-4 flex items-start gap-2 rounded-lg bg-emerald-50 p-3 border border-emerald-200 text-left">
+                    <RefreshCw className="h-4 w-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-emerald-800">Auto-renewal is active</p>
+                      <p className="text-xs text-emerald-600 mt-0.5">
+                        Your next renewal will be automatically charged at 15% off. You can cancel anytime from your dashboard.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </>
             )}
             <div className="mt-6 flex gap-3">
