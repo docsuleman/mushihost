@@ -23,7 +23,7 @@ export async function generateInvoice(
 
     const lineItems = [
       {
-        description: `${product.name} (${product.site})`,
+        description: product.name,
         amount: product.price_usd,
         quantity: 1,
       },

@@ -129,14 +129,14 @@ function buildEmailContent(reminder: Record<string, unknown>): { subject: string
 
     case 'credit_low':
       return {
-        subject: 'Your MyQBank credits are running low',
+        subject: 'Your account balance is running low',
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
-            <h2 style="color: #1a1a1a;">Credits Running Low</h2>
+            <h2 style="color: #1a1a1a;">Balance Running Low</h2>
             <p>Hi ${name},</p>
-            <p>Your MyQBank credit balance is running low. Top up now to continue practicing:</p>
-            <p><a href="${MUSHIHOST_URL}/dashboard" style="display: inline-block; padding: 12px 24px; background: #6d28d9; color: white; text-decoration: none; border-radius: 8px;">Buy Credits</a></p>
-            <p style="color: #666; font-size: 14px;">You can also enable auto-load to automatically top up when credits run low.</p>
+            <p>Your account balance is running low. Top up now to continue using your services:</p>
+            <p><a href="${MUSHIHOST_URL}/dashboard" style="display: inline-block; padding: 12px 24px; background: #6d28d9; color: white; text-decoration: none; border-radius: 8px;">Top Up Now</a></p>
+            <p style="color: #666; font-size: 14px;">You can also enable auto-load to automatically top up when your balance runs low.</p>
           </div>
         `,
       };

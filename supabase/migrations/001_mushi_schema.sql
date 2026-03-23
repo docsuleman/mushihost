@@ -264,19 +264,19 @@ $$ LANGUAGE plpgsql;
 -- SEED: Products
 -- ============================================================
 
--- MyQBank Credit Packs
+-- MyQBank Packs
 INSERT INTO mushi_products (site, name, description, type, price_usd, interval, grants, sort_order) VALUES
-  ('myqbank', '10 Credits',     'Get 10 exam practice credits',       'credit_pack', 15.00,  NULL, '{"credits": 10}',    1),
-  ('myqbank', '20 Credits',     'Get 20 exam practice credits',       'credit_pack', 25.00,  NULL, '{"credits": 20}',    2),
-  ('myqbank', '100 Credits',    'Get 100 exam practice credits',      'credit_pack', 50.00,  NULL, '{"credits": 100}',   3),
-  ('myqbank', '250 Credits',    'Get 250 exam practice credits',      'credit_pack', 100.00, NULL, '{"credits": 250}',   4),
-  ('myqbank', '500 AI Credits', 'AI-powered question explanations',   'one_time',    5.00,   NULL, '{"ai_credits": 500}', 5);
+  ('myqbank', 'Starter Pack',   'Essential starter bundle',            'credit_pack', 15.00,  NULL, '{"credits": 10}',    1),
+  ('myqbank', 'Bronze Pack',    'Great value for regular use',         'credit_pack', 25.00,  NULL, '{"credits": 20}',    2),
+  ('myqbank', 'Silver Pack',    'Popular choice for active learners',  'credit_pack', 50.00,  NULL, '{"credits": 100}',   3),
+  ('myqbank', 'Gold Pack',      'Best value for power users',          'credit_pack', 100.00, NULL, '{"credits": 250}',   4),
+  ('myqbank', 'AI Boost',       'AI-powered enhanced features',        'one_time',    5.00,   NULL, '{"ai_credits": 500}', 5);
 
 -- FreemedTube Memberships
 INSERT INTO mushi_products (site, name, description, type, price_usd, interval, grants, sort_order) VALUES
   ('freemedtube', 'Bronze', 'Monthly access to premium videos',                        'subscription', 15.00,  'month',    '{"tier": "bronze"}',                          1),
-  ('freemedtube', 'Silver', '6-month access + 10 MyQBank credits',                     'subscription', 50.00,  '6_months', '{"tier": "silver", "mqb_credits": 10}',       2),
-  ('freemedtube', 'Gold',   'Annual access + 20 MyQBank credits',                      'subscription', 100.00, 'year',     '{"tier": "gold", "mqb_credits": 20}',         3);
+  ('freemedtube', 'Silver', '6-month access to premium content',                        'subscription', 50.00,  '6_months', '{"tier": "silver", "mqb_credits": 10}',       2),
+  ('freemedtube', 'Gold',   'Annual access to all premium content',                    'subscription', 100.00, 'year',     '{"tier": "gold", "mqb_credits": 20}',         3);
 
 -- MyMedBooks Tiers
 INSERT INTO mushi_products (site, name, description, type, price_usd, interval, grants, sort_order) VALUES
