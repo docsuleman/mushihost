@@ -5,18 +5,12 @@ import BrandHeader from '@/components/BrandHeader'
 import { CheckCircle2, RefreshCw } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 
-const SITE_URLS = {
-  myqbank: 'https://myqbanks.com',
-  freemedtube: 'https://app.freemedtube.net',
-  mymedbooks: 'https://mymedbooks.com',
-}
-
 export default function PaymentSuccess() {
   const { state } = useLocation()
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <BrandHeader sourceSite={state?.site} />
+      <BrandHeader />
       <div className="mx-auto max-w-lg px-4 py-20">
         <Card>
           <CardContent className="flex flex-col items-center p-8 text-center">
@@ -50,15 +44,8 @@ export default function PaymentSuccess() {
                 )}
               </>
             )}
-            <div className="mt-6 flex gap-3">
-              {state?.site && SITE_URLS[state.site] && (
-                <Button asChild className="cursor-pointer">
-                  <a href={SITE_URLS[state.site]}>
-                    Return to {state.site === 'myqbank' ? 'MyQBank' : state.site === 'freemedtube' ? 'FreemedTube' : 'MyMedBooks'}
-                  </a>
-                </Button>
-              )}
-              <Button variant="outline" asChild className="cursor-pointer">
+            <div className="mt-6">
+              <Button asChild className="cursor-pointer">
                 <Link to="/dashboard">View Dashboard</Link>
               </Button>
             </div>

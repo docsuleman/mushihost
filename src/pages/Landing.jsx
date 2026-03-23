@@ -1,6 +1,8 @@
-import { Server, Shield, Zap, Globe, Clock, Headphones, HardDrive, Cpu, Cloud } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Server, Shield, Zap, Globe, Clock, Headphones, HardDrive, Cpu, Cloud, Star, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import StatsBar from '@/components/StatsBar'
 
 const FEATURES = [
   {
@@ -60,24 +62,22 @@ const PLANS = [
   },
 ]
 
+const HOSTING_TYPES = [
+  { name: 'Shared Hosting', desc: 'From $4.99/mo', to: '/hosting/shared' },
+  { name: 'WordPress Hosting', desc: 'From $5.99/mo', to: '/hosting/wordpress' },
+  { name: 'VPS Hosting', desc: 'From $19.99/mo', to: '/hosting/vps' },
+  { name: 'Dedicated Servers', desc: 'From $99.99/mo', to: '/hosting/dedicated' },
+]
+
+const TESTIMONIALS = [
+  { name: 'Sarah M.', role: 'Freelance Designer', text: 'Switched hosts and immediately noticed the speed difference. My portfolio loads in under a second now.' },
+  { name: 'James R.', role: 'E-commerce Owner', text: 'Zero downtime during Black Friday. Exactly what my store needed.' },
+  { name: 'Emily C.', role: 'Content Creator', text: 'WordPress hosting is perfect for my blog. Support responded in under 10 minutes.' },
+]
+
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-border bg-white sticky top-0 z-50">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-2 text-xl font-bold">
-            <Server className="h-6 w-6 text-primary" />
-            MushiHost
-          </div>
-          <nav className="hidden sm:flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-            <a href="#contact" className="hover:text-foreground transition-colors">Contact</a>
-          </nav>
-        </div>
-      </header>
-
+    <>
       {/* Hero */}
       <section className="mx-auto max-w-4xl px-4 py-24 text-center">
         <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary mb-6">
@@ -115,6 +115,30 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* Hosting Types Strip */}
+      <section className="border-y border-border bg-muted/30 py-10">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {HOSTING_TYPES.map((type) => (
+              <Link
+                key={type.name}
+                to={type.to}
+                className="flex items-center justify-between rounded-lg border border-border bg-white p-4 transition-shadow hover:shadow-md"
+              >
+                <div>
+                  <p className="font-semibold text-sm">{type.name}</p>
+                  <p className="text-xs text-muted-foreground">{type.desc}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Stats */}
+      <StatsBar />
 
       {/* Features */}
       <section id="features" className="bg-muted/30 py-20">
@@ -181,31 +205,75 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Contact */}
-      <section id="contact" className="bg-muted/30 py-20">
-        <div className="mx-auto max-w-2xl px-4 text-center">
-          <h2 className="text-3xl font-bold tracking-tight">Need Help?</h2>
-          <p className="mt-3 text-muted-foreground">
-            Our support team is available 24/7 to help you with any questions.
-          </p>
-          <div className="mt-8">
-            <Button size="lg" className="cursor-pointer px-8" asChild>
-              <a href="mailto:support@mushihost.com">Contact Support</a>
+      {/* Testimonials Preview */}
+      <section className="bg-muted/30 py-20">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight">Loved by Thousands</h2>
+            <p className="mt-3 text-muted-foreground">Don't just take our word for it — here's what our customers say.</p>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-3">
+            {TESTIMONIALS.map((t) => (
+              <Card key={t.name} className="border-0 shadow-sm">
+                <CardContent className="p-6">
+                  <div className="flex gap-0.5 mb-3">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star key={s} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">"{t.text}"</p>
+                  <p className="text-sm font-semibold">{t.name}</p>
+                  <p className="text-xs text-muted-foreground">{t.role}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <Button variant="outline" className="cursor-pointer" asChild>
+              <Link to="/testimonials">View All Reviews</Link>
             </Button>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="mx-auto max-w-6xl px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2 font-semibold text-foreground">
-            <Server className="h-4 w-4 text-primary" />
-            MushiHost
+      {/* Trust Badges */}
+      <section className="py-12">
+        <div className="mx-auto max-w-4xl px-4">
+          <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              <span>SSL Secured</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Server className="h-5 w-5 text-primary" />
+              <span>99.9% Uptime SLA</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              <span>30-Day Money Back</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Headphones className="h-5 w-5 text-primary" />
+              <span>24/7 Support</span>
+            </div>
           </div>
-          <p>&copy; {new Date().getFullYear()} MushiHost. All rights reserved.</p>
         </div>
-      </footer>
-    </div>
+      </section>
+
+      {/* Contact */}
+      <section id="contact" className="bg-gradient-to-r from-primary to-purple-700 py-20">
+        <div className="mx-auto max-w-2xl px-4 text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-white">Need Help?</h2>
+          <p className="mt-3 text-white/80">
+            Our support team is available 24/7 to help you with any questions.
+          </p>
+          <div className="mt-8">
+            <Button size="lg" variant="secondary" className="cursor-pointer px-8" asChild>
+              <a href="mailto:support@mushihost.com">Contact Support</a>
+            </Button>
+          </div>
+        </div>
+      </section>
+    </>
   )
 }

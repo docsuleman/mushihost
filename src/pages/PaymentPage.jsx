@@ -85,7 +85,7 @@ export default function PaymentPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <BrandHeader sourceSite={source_site} />
+      <BrandHeader />
       <div className="mx-auto max-w-lg px-4 py-12">
         {/* Order Summary */}
         <Card className="mb-6">
