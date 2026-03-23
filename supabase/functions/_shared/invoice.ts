@@ -8,7 +8,7 @@ export async function generateInvoice(
   paymentId: string,
   customerId: string,
   amount: number,
-  product: { name: string; price_usd: number; site: string }
+  product: { name: string; public_name?: string; price_usd: number; site: string }
 ): Promise<{ invoice_number: string } | null> {
   const SUPABASE_URL = resolveSupabaseUrl();
   const supabaseAdmin = createClient(
@@ -23,7 +23,7 @@ export async function generateInvoice(
 
     const lineItems = [
       {
-        description: product.name,
+        description: product.public_name || product.name,
         amount: product.price_usd,
         quantity: 1,
       },

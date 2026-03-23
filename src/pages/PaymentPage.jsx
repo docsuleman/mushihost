@@ -99,7 +99,7 @@ export default function PaymentPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">{product.name}</p>
+                <p className="font-medium">{product.public_name || product.name}</p>
                 <p className="text-sm text-muted-foreground">{product.description}</p>
                 {product.type === 'subscription' && (
                   <Badge variant="secondary" className="mt-1">
@@ -158,12 +158,12 @@ export default function PaymentPage() {
               >
                 <PaymentForm
                   amount={amount_usd}
-                  productName={product.name}
+                  productName={product.public_name || product.name}
                   onSuccess={(paymentIntent) => {
                     navigate('/pay/success', {
                       state: {
                         paymentId: paymentIntent.id,
-                        product: product.name,
+                        product: product.public_name || product.name,
                         amount: amount_usd,
                         site: source_site,
                         autoRenew: auto_renew,

@@ -173,7 +173,7 @@ async function handlePaymentIntentSucceeded(
       provider_payment_id: paymentIntent.id,
       status: 'succeeded',
       product_id: productId,
-      description: product.name,
+      description: product.public_name || product.name,
     })
     .select('id')
     .single();
@@ -339,7 +339,7 @@ async function handleInvoicePaid(
     provider: 'stripe',
     provider_payment_id: invoice.payment_intent as string || invoice.id,
     status: 'succeeded',
-    description: `${sub.product.name}${discountPercent ? ` (${discountPercent}% off)` : ''}`,
+    description: `${sub.product.public_name || sub.product.name}${discountPercent ? ` (${discountPercent}% off)` : ''}`,
   });
 
   // Update subscription period

@@ -41,6 +41,7 @@ export async function getOrCreateRecurringPrice(
   product: {
     id: string;
     name: string;
+    public_name?: string;
     price_usd: number;
     interval?: string;
     interval_count?: number;
@@ -73,7 +74,7 @@ export async function getOrCreateRecurringPrice(
 
   // Create a Stripe Product + Price
   const stripeProduct = await stripe.products.create({
-    name: `${product.name} (Auto-Renewal)`,
+    name: `${product.public_name || product.name} (Auto-Renewal)`,
     metadata: { mushi_product_id: product.id },
   });
 

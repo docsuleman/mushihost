@@ -18,8 +18,7 @@ export default function SubscriptionCard({ subscription, onManage }) {
     <Card>
       <CardHeader className="flex flex-row items-start justify-between pb-2">
         <div>
-          <CardTitle className="text-base">{product?.name}</CardTitle>
-          <p className="text-sm text-muted-foreground capitalize">{product?.site}</p>
+          <CardTitle className="text-base">{product?.public_name || product?.name}</CardTitle>
         </div>
         <Badge variant={STATUS_COLORS[subscription.status] || 'secondary'}>
           {subscription.status}

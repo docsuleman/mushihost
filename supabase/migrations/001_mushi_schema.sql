@@ -264,13 +264,13 @@ $$ LANGUAGE plpgsql;
 -- SEED: Products
 -- ============================================================
 
--- MyQBank Packs
-INSERT INTO mushi_products (site, name, description, type, price_usd, interval, grants, sort_order) VALUES
-  ('myqbank', 'Starter Pack',   'Essential starter bundle',            'credit_pack', 15.00,  NULL, '{"credits": 10}',    1),
-  ('myqbank', 'Bronze Pack',    'Great value for regular use',         'credit_pack', 25.00,  NULL, '{"credits": 20}',    2),
-  ('myqbank', 'Silver Pack',    'Popular choice for active learners',  'credit_pack', 50.00,  NULL, '{"credits": 100}',   3),
-  ('myqbank', 'Gold Pack',      'Best value for power users',          'credit_pack', 100.00, NULL, '{"credits": 250}',   4),
-  ('myqbank', 'AI Boost',       'AI-powered enhanced features',        'one_time',    5.00,   NULL, '{"ai_credits": 500}', 5);
+-- MyQBank Credit Packs (name = internal, public_name = Stripe/MushiHost display)
+INSERT INTO mushi_products (site, name, public_name, description, type, price_usd, interval, grants, sort_order) VALUES
+  ('myqbank', '10 Credits',     'Starter Pack',  'Get 10 exam practice credits',       'credit_pack', 15.00,  NULL, '{"credits": 10}',    1),
+  ('myqbank', '20 Credits',     'Bronze Pack',   'Get 20 exam practice credits',       'credit_pack', 25.00,  NULL, '{"credits": 20}',    2),
+  ('myqbank', '100 Credits',    'Silver Pack',   'Popular choice for active learners',  'credit_pack', 50.00,  NULL, '{"credits": 100}',   3),
+  ('myqbank', '250 Credits',    'Gold Pack',     'Best value for power users',          'credit_pack', 100.00, NULL, '{"credits": 250}',   4),
+  ('myqbank', '500 AI Credits', 'AI Boost',      'AI-powered question explanations',    'one_time',    5.00,   NULL, '{"ai_credits": 500}', 5);
 
 -- FreemedTube Memberships
 INSERT INTO mushi_products (site, name, description, type, price_usd, interval, grants, sort_order) VALUES
