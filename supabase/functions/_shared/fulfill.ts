@@ -114,18 +114,19 @@ async function fulfillMyQBank(
     });
     if (error) {
       console.error('Failed to add AI credits via RPC, trying direct update:', error);
-      // Fallback: direct update on Credits table ai_credits column
+      // Fallback: direct update on Credits table ai_credit column
       const { data: current } = await supabaseAdmin
         .from('Credits')
-        .select('ai_credits')
+        .select('ai_credit')
         .eq('id_Users', userId)
         .single();
 
       if (current) {
-        await supabaseAdmin
+        const { error: updateErr } = await supabaseAdmin
           .from('Credits')
-          .update({ ai_credits: (current.ai_credits || 0) + aiCreditsToAdd })
+          .update({ ai_credit: (current.ai_credit || 0) + aiCreditsToAdd })
           .eq('id_Users', userId);
+        if (updateErr) return { success: false, error: updateErr.message };
       }
     }
     results.ai_credits_added = aiCreditsToAdd;

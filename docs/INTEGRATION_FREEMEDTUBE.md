@@ -195,7 +195,7 @@ User clicks "Subscribe Gold" on FreemedTube
         ↓
 Frontend calls createPaymentLink(productId, userId, email)
         ↓
-Edge function returns: { url: "https://payment.mushihost.com/pay/<token>" }
+Edge function returns: { url: "https://mushihost.com/pay/<token>" }
         ↓
 User redirected to MushiHost → enters card details
         ↓
@@ -225,4 +225,4 @@ Users can manage their subscription from the MushiHost dashboard:
 - Update payment method
 - View payment history
 
-Link to: `https://payment.mushihost.com/dashboard`
+Link to: `https://mushihost.com/dashboard`

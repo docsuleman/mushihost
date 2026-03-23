@@ -175,7 +175,7 @@ User clicks "Subscribe Platinum" on MyMedBooks
         ↓
 Frontend calls redirectToPayment(productId, userId, email)
         ↓
-Edge function returns: { url: "https://payment.mushihost.com/pay/<token>" }
+Edge function returns: { url: "https://mushihost.com/pay/<token>" }
         ↓
 User redirected to MushiHost → enters card details
         ↓
@@ -196,4 +196,4 @@ All MyMedBooks subscriptions are monthly. On renewal:
 
 ### 6. Manage Subscription
 
-Link users to: `https://payment.mushihost.com/dashboard`
+Link users to: `https://mushihost.com/dashboard`

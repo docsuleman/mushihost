@@ -5,13 +5,27 @@ import { getStripe } from '../_shared/stripe.ts';
 
 const SUPABASE_URL = resolveSupabaseUrl();
 
-// Credit pack product mapping
-const CREDIT_PACKS: Record<string, { credits: number; name: string }> = {
-  '10_credits': { credits: 10, name: '10 Credits' },
-  '20_credits': { credits: 20, name: '20 Credits' },
-  '100_credits': { credits: 100, name: '100 Credits' },
-  '250_credits': { credits: 250, name: '250 Credits' },
-};
+/**
+ * mushi-auto-load v2
+ *
+ * Integrates with MyQBank's daily_subscription_management cron.
+ * Runs before the cron deactivates subscriptions for insufficient credits.
+ *
+ * Two modes per customer:
+ *  - "package": User picks a specific credit pack (voucher). On expiry day,
+ *    if credits can't cover upcoming renewals, charge for that pack.
+ *  - "minimum_balance": Keep credits above a threshold. If after renewals
+ *    credits would drop below threshold, load enough credits to stay above.
+ *
+ * Flow:
+ *  1. Find auto-load-enabled customers
+ *  2. For each, query upcoming Subscription expiries (within 2 days)
+ *  3. Calculate total credits needed for those renewals
+ *  4. Determine if auto-load should fire based on mode
+ *  5. Find the best product (credit pack) to purchase
+ *  6. Charge off-session (automatic) or send notification (notify)
+ *  7. Add credits, log result
+ */
 
 const handler = async (request: Request): Promise<Response> => {
   if (request.method === 'OPTIONS') {
@@ -35,62 +49,154 @@ const handler = async (request: Request): Promise<Response> => {
       return errorResponse('Failed to fetch auto-load customers', 500);
     }
 
+    // Pre-fetch all active MyQBank credit pack products (sorted by price ascending)
+    const { data: creditProducts } = await supabaseAdmin
+      .from('mushi_products')
+      .select('*')
+      .eq('site', 'myqbank')
+      .eq('type', 'credit_pack')
+      .eq('is_active', true)
+      .order('price_usd', { ascending: true });
+
+    if (!creditProducts || creditProducts.length === 0) {
+      return errorResponse('No active credit pack products found', 500);
+    }
+
     const results: Array<{ email: string; status: string; details?: string }> = [];
+    const today = new Date();
+    // Check subscriptions expiring within the next 2 days
+    const twoDaysFromNow = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000);
+    const todayStr = today.toISOString().split('T')[0];
+    const twoDaysStr = twoDaysFromNow.toISOString().split('T')[0];
 
     for (const customer of customers) {
       try {
+        const userId = customer.supabase_user_id as string;
+
         // Get current credit balance
         const { data: creditRow } = await supabaseAdmin
           .from('Credits')
           .select('Credit')
-          .eq('id_Users', customer.supabase_user_id)
+          .eq('id_Users', userId)
           .single();
 
         const currentCredits = creditRow?.Credit || 0;
 
-        // Check if below threshold
-        if (currentCredits >= (customer.auto_load_threshold || 5)) {
-          results.push({ email: customer.email, status: 'skipped', details: `Credits ${currentCredits} >= threshold ${customer.auto_load_threshold}` });
-          continue;
+        // Get active subscriptions expiring within 2 days for this user
+        const { data: expiringSubscriptions } = await supabaseAdmin
+          .from('Subscriptions')
+          .select('id, qbank, credit, expiry, autoRenewal')
+          .eq('id_Users', userId)
+          .eq('active', 1)
+          .eq('autoRenewal', true)
+          .gte('expiry', todayStr)
+          .lte('expiry', twoDaysStr);
+
+        // Calculate total credits needed for upcoming renewals
+        const creditsNeeded = (expiringSubscriptions || []).reduce(
+          (sum: number, sub: Record<string, unknown>) => sum + (Number(sub.credit) || 0),
+          0
+        );
+
+        // If no renewals coming up, also check if currently below threshold (for minimum_balance mode)
+        const mode = customer.auto_load_mode || 'package';
+        const threshold = customer.auto_load_threshold || 0;
+        const maxMonthly = customer.auto_load_max_monthly || 100;
+        const alreadySpent = Number(customer.auto_loaded_this_month) || 0;
+
+        let creditsToLoad = 0;
+        let reason = '';
+
+        if (mode === 'minimum_balance') {
+          // After upcoming renewals, what would balance be?
+          const balanceAfterRenewals = currentCredits - creditsNeeded;
+
+          if (balanceAfterRenewals < threshold) {
+            // Need to load enough so that after renewals, balance >= threshold
+            creditsToLoad = threshold - balanceAfterRenewals;
+            reason = `Balance after renewals (${balanceAfterRenewals}) would be below threshold (${threshold})`;
+          } else if (currentCredits < threshold && creditsNeeded === 0) {
+            // No upcoming renewals but already below threshold
+            creditsToLoad = threshold - currentCredits;
+            reason = `Current balance (${currentCredits}) below threshold (${threshold})`;
+          } else {
+            results.push({
+              email: customer.email,
+              status: 'skipped',
+              details: `Balance OK: ${currentCredits} credits, ${creditsNeeded} needed for renewals, threshold ${threshold}`,
+            });
+            continue;
+          }
+        } else {
+          // Package mode: trigger when credits can't cover upcoming renewals
+          if (creditsNeeded > 0 && currentCredits < creditsNeeded) {
+            creditsToLoad = creditsNeeded - currentCredits;
+            reason = `Insufficient credits (${currentCredits}) for ${creditsNeeded} needed by expiring QBanks`;
+          } else if (creditsNeeded > 0) {
+            results.push({
+              email: customer.email,
+              status: 'skipped',
+              details: `Credits sufficient: ${currentCredits} >= ${creditsNeeded} needed`,
+            });
+            continue;
+          } else {
+            results.push({
+              email: customer.email,
+              status: 'skipped',
+              details: 'No QBank renewals due within 2 days',
+            });
+            continue;
+          }
         }
 
-        // Check monthly budget
-        const packKey = customer.auto_load_pack || '100_credits';
-        const pack = CREDIT_PACKS[packKey];
-        if (!pack) {
-          results.push({ email: customer.email, status: 'error', details: `Unknown pack: ${packKey}` });
-          continue;
-        }
-
-        // Find the product to get price
-        const { data: product } = await supabaseAdmin
-          .from('mushi_products')
-          .select('*')
-          .eq('site', 'myqbank')
-          .eq('name', pack.name)
-          .eq('is_active', true)
-          .single();
+        // Find the best product to purchase
+        const product = findBestProduct(creditProducts, creditsToLoad, customer.auto_load_pack);
 
         if (!product) {
-          results.push({ email: customer.email, status: 'error', details: `Product not found for pack: ${pack.name}` });
+          results.push({
+            email: customer.email,
+            status: 'error',
+            details: `No suitable credit pack found for ${creditsToLoad} credits needed`,
+          });
           continue;
         }
 
-        const alreadySpent = customer.auto_loaded_this_month || 0;
-        const maxMonthly = customer.auto_load_max_monthly || 100;
+        const productCredits = Number(product.grants?.credits) || 0;
+        const productPrice = Number(product.price_usd);
 
-        if (alreadySpent + product.price_usd > maxMonthly) {
-          results.push({ email: customer.email, status: 'skipped', details: `Monthly budget exceeded: $${alreadySpent}/$${maxMonthly}` });
+        // Check monthly budget
+        if (alreadySpent + productPrice > maxMonthly) {
+          results.push({
+            email: customer.email,
+            status: 'skipped',
+            details: `Monthly budget exceeded: $${alreadySpent} spent + $${productPrice} = $${alreadySpent + productPrice} > $${maxMonthly} max`,
+          });
           continue;
         }
+
+        console.log(
+          `Auto-load for ${customer.email}: mode=${mode}, need=${creditsToLoad}, ` +
+          `product="${product.name}" (${productCredits} credits / $${productPrice}), reason: ${reason}`
+        );
 
         if (customer.auto_load_mode === 'automatic') {
-          // Charge saved payment method off-session
-          const chargeResult = await chargeOffSession(supabaseAdmin, customer, product, currentCredits, pack.credits);
+          const chargeResult = await chargeOffSession(
+            supabaseAdmin,
+            customer,
+            product,
+            currentCredits,
+            productCredits
+          );
           results.push({ email: customer.email, ...chargeResult });
         } else {
-          // Notify mode: create a pre-filled payment link and send email
-          const notifyResult = await sendAutoLoadNotification(supabaseAdmin, customer, product, currentCredits);
+          const notifyResult = await sendAutoLoadNotification(
+            supabaseAdmin,
+            customer,
+            product,
+            currentCredits,
+            creditsNeeded,
+            reason
+          );
           results.push({ email: customer.email, ...notifyResult });
         }
       } catch (err) {
@@ -105,6 +211,48 @@ const handler = async (request: Request): Promise<Response> => {
     return errorResponse(err.message, 500);
   }
 };
+
+/**
+ * Find the best credit pack product for the needed credits.
+ *
+ * If customer has a preferred pack (auto_load_pack), use that if it covers the need.
+ * Otherwise, find the cheapest pack that provides at least `creditsNeeded`.
+ * More credits = cheaper per credit, so larger packs are better value.
+ */
+function findBestProduct(
+  products: Array<Record<string, unknown>>,
+  creditsNeeded: number,
+  preferredPack?: string
+): Record<string, unknown> | null {
+  // If customer chose a specific pack, try to use it
+  if (preferredPack) {
+    const preferred = products.find(
+      (p) => p.name === preferredPack || p.id === preferredPack
+    );
+    if (preferred) {
+      const packCredits = Number((preferred.grants as Record<string, unknown>)?.credits) || 0;
+      if (packCredits >= creditsNeeded) {
+        return preferred;
+      }
+      // Preferred pack doesn't cover the need — still use it if it's the only option
+      // (user explicitly chose this pack, they may want partial coverage + another load next cycle)
+      return preferred;
+    }
+  }
+
+  // Find the cheapest pack that covers the need
+  // Products are already sorted by price ascending
+  for (const product of products) {
+    const packCredits = Number((product.grants as Record<string, unknown>)?.credits) || 0;
+    if (packCredits >= creditsNeeded) {
+      return product;
+    }
+  }
+
+  // If no single pack covers the need, return the largest pack (best value)
+  // Products sorted by price asc → last one is the biggest/most expensive
+  return products[products.length - 1] || null;
+}
 
 async function chargeOffSession(
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -193,11 +341,15 @@ async function chargeOffSession(
       await supabaseAdmin
         .from('mushi_customers')
         .update({
-          auto_loaded_this_month: ((customer.auto_loaded_this_month as number) || 0) + (product.price_usd as number),
+          auto_loaded_this_month:
+            (Number(customer.auto_loaded_this_month) || 0) + (product.price_usd as number),
         })
         .eq('id', customer.id as string);
 
-      return { status: 'charged', details: `Added ${creditsToAdd} credits, charged $${product.price_usd}` };
+      return {
+        status: 'charged',
+        details: `Added ${creditsToAdd} credits, charged $${product.price_usd}. New balance: ${newBalance}`,
+      };
     }
 
     return { status: 'error', details: `Payment intent status: ${paymentIntent.status}` };
@@ -220,7 +372,9 @@ async function sendAutoLoadNotification(
   supabaseAdmin: ReturnType<typeof createClient>,
   customer: Record<string, unknown>,
   product: Record<string, unknown>,
-  currentCredits: number
+  currentCredits: number,
+  creditsNeeded: number,
+  reason: string
 ): Promise<{ status: string; details?: string }> {
   // Create a pre-filled payment link
   const tokenBytes = new Uint8Array(32);
@@ -236,9 +390,14 @@ async function sendAutoLoadNotification(
     customer_id: customer.id,
     product_id: product.id,
     source_site: 'myqbank',
-    source_user_id: customer.supabase_user_id?.toString(),
+    source_user_id: (customer.supabase_user_id as string) || null,
     amount_usd: product.price_usd,
-    context: { source: 'auto_load_notification', credits_at_time: currentCredits },
+    context: {
+      source: 'auto_load_notification',
+      credits_at_time: currentCredits,
+      credits_needed: creditsNeeded,
+      reason,
+    },
     expires_at: expiresAt,
   });
 
@@ -250,10 +409,10 @@ async function sendAutoLoadNotification(
     email: customer.email as string,
   });
 
-  const mushihostUrl = Deno.env.get('MUSHIHOST_URL') || 'https://mushihost.com';
+  const mushihostUrl = Deno.env.get('MUSHIHOST_URL') || 'https://payment.freemedtube.net';
   return {
     status: 'notified',
-    details: `Payment link created: ${mushihostUrl}/pay/${token}`,
+    details: `Payment link created: ${mushihostUrl}/pay/${token} — ${reason}`,
   };
 }
 

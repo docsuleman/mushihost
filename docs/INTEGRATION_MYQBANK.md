@@ -46,7 +46,7 @@ MushiHostOP.js calls edge function: mushi-create-payment-link
   Body: { product_id, source_site: "myqbank", source_user_id, source_user_email }
   Header: X-Mushi-Api-Key: <VITE_MUSHI_API_KEY>
         ↓
-Edge function returns: { url: "https://payment.mushihost.com/pay/<token>" }
+Edge function returns: { url: "https://mushihost.com/pay/<token>" }
         ↓
 User redirected to MushiHost payment page
         ↓
@@ -98,7 +98,7 @@ Body:
 
 Response:
 {
-  "url": "https://payment.mushihost.com/pay/<token>",
+  "url": "https://mushihost.com/pay/<token>",
   "token": "<64-char hex>",
   "expires_at": "2026-03-22T12:00:00Z",
   "amount_usd": 50.00,
