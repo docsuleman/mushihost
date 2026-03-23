@@ -81,7 +81,7 @@ export default function PaymentPage() {
     )
   }
 
-  const { product, amount_usd, source_site, customer, auto_renew } = linkData
+  const { product, amount_usd, customer, auto_renew } = linkData
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -165,7 +165,6 @@ export default function PaymentPage() {
                         paymentId: paymentIntent.id,
                         product: product.public_name || product.name,
                         amount: amount_usd,
-                        site: source_site,
                         autoRenew: auto_renew,
                       },
                     })

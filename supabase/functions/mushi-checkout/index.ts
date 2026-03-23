@@ -57,7 +57,6 @@ const handler = async (request: Request): Promise<Response> => {
         status: 'pending',
         product: link.product,
         amount_usd: link.amount_usd,
-        source_site: link.source_site,
         auto_renew: !!link.auto_renew,
         customer: {
           email: link.customer?.email,
@@ -115,7 +114,6 @@ const handler = async (request: Request): Promise<Response> => {
             mushi_payment_link_id: link.id,
             mushi_customer_id: link.customer.id,
             mushi_product_id: link.product.id,
-            source_site: link.source_site,
           },
           automatic_payment_methods: { enabled: true },
         });
@@ -134,7 +132,6 @@ const handler = async (request: Request): Promise<Response> => {
             mushi_payment_link_id: link.id,
             mushi_customer_id: link.customer.id,
             mushi_product_id: link.product.id,
-            source_site: link.source_site,
           },
           automatic_payment_methods: { enabled: true },
         });

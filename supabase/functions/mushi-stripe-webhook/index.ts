@@ -184,8 +184,17 @@ async function handlePaymentIntentSucceeded(
     .update({ status: 'completed' })
     .eq('id', linkId);
 
+  // Calculate period_end for products with an interval (e.g. Gold = 1 year)
+  const periodEnd = product.interval
+    ? calculatePeriodEnd(product.interval, product.interval_count)
+    : null;
+
   // Fulfill the purchase
-  const fulfillResult = await fulfillPayment(product, customer);
+  const fulfillResult = await fulfillPayment(
+    product,
+    customer,
+    periodEnd ? { current_period_end: periodEnd.toISOString() } : undefined
+  );
 
   // Update payment with fulfillment status
   if (payment) {
@@ -243,7 +252,6 @@ async function handlePaymentIntentSucceeded(
         metadata: {
           mushi_customer_id: customerId,
           mushi_product_id: productId,
-          source_site: metadata.source_site,
           auto_renew: 'true',
         },
       });
