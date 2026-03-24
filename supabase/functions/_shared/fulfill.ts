@@ -63,12 +63,34 @@ export async function fulfillPayment(
  */
 async function fulfillMyQBank(
   supabaseAdmin: ReturnType<typeof createClient>,
-  customer: { supabase_user_id?: string; email: string },
+  customer: { id?: string; supabase_user_id?: string; email: string },
   grants: Record<string, unknown>
 ): Promise<FulfillmentResult> {
-  const userId = customer.supabase_user_id;
+  let userId = customer.supabase_user_id;
+
+  // Auto-lookup supabase_user_id by email if not linked
+  if (!userId && customer.email) {
+    const { data: user } = await supabaseAdmin
+      .from('Users')
+      .select('id')
+      .eq('email', customer.email)
+      .single();
+
+    if (user?.id) {
+      userId = user.id;
+      // Link it to the mushi_customer for future use
+      if (customer.id) {
+        await supabaseAdmin
+          .from('mushi_customers')
+          .update({ supabase_user_id: userId })
+          .eq('id', customer.id);
+      }
+      console.log(`Auto-linked supabase_user_id ${userId} for ${customer.email}`);
+    }
+  }
+
   if (!userId) {
-    return { success: false, error: 'No supabase_user_id linked for MyQBank fulfillment' };
+    return { success: false, error: `No MyQBank user found for email: ${customer.email}` };
   }
 
   const results: Record<string, unknown> = {};
